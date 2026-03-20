@@ -26,10 +26,18 @@ def register(payload: RegisterRequest, db: Database = Depends(get_db)) -> dict:
             detail="Email already registered",
         )
 
+    try:
+        password_hash = hash_password(payload.password)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
     user_doc = {
         "name": payload.name,
         "email": payload.email.lower(),
-        "password_hash": hash_password(payload.password),
+        "password_hash": password_hash,
         "emergency_contacts": payload.emergency_contacts,
         "created_at": datetime.now(timezone.utc),
     }
@@ -61,4 +69,3 @@ def get_profile(current_user: dict = Depends(get_current_user)) -> UserProfileRe
         emergency_contacts=user.get("emergency_contacts", []),
         created_at=user["created_at"],
     )
-
