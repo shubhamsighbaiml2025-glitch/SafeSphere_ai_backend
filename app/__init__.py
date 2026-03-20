@@ -1,0 +1,2 @@
+"""SafeSphere AI backend package."""
+

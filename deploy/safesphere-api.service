@@ -1,0 +1,16 @@
+[Unit]
+Description=SafeSphere API
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/safesphere_backend
+EnvironmentFile=/opt/safesphere_backend/.env
+ExecStart=/opt/safesphere_backend/.venv/bin/gunicorn -c /opt/safesphere_backend/gunicorn_conf.py app.main:app -k uvicorn.workers.UvicornWorker
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+

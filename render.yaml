@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: safesphere-api
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn_conf.py app.main:app -k uvicorn.workers.UvicornWorker
+    healthCheckPath: /healthz
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: APP_WORKERS
+        value: "2"
+      - key: API_PREFIX
+        value: /api
+      - key: MONGO_DB_NAME
+        value: safesphere
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      - key: GUNICORN_GRACEFUL_TIMEOUT
+        value: "30"
+      - key: GUNICORN_KEEPALIVE
+        value: "5"
+      - key: GUNICORN_LOG_LEVEL
+        value: info
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: TRUSTED_HOSTS
+        sync: false
+
