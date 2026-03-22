@@ -7,24 +7,15 @@ from pymongo.database import Database
 
 from app.core.deps import get_current_user
 from app.db.mongo import get_db
-from app.schemas.emergency import LocationUpdateRequest, SOSRequest, StopEmergencyRequest
+from app.schemas.emergency import (
+    AIAlertRequest,
+    LocationUpdateRequest,
+    SOSRequest,
+    StopEmergencyRequest,
+)
+from app.services.emergency_service import create_notification, trigger_emergency
 
 router = APIRouter(tags=["Emergency"])
-
-
-def _create_notification(
-    db: Database, user_id: str, notif_type: str, title: str, message: str
-) -> None:
-    db.notifications.insert_one(
-        {
-            "user_id": user_id,
-            "type": notif_type,
-            "title": title,
-            "message": message,
-            "timestamp": datetime.now(timezone.utc),
-            "status": "UNREAD",
-        }
-    )
 
 
 @router.post("/sos", status_code=status.HTTP_201_CREATED)
@@ -33,23 +24,16 @@ def trigger_sos(
     current_user: dict = Depends(get_current_user),
     db: Database = Depends(get_db),
 ) -> dict:
-    user_id = str(current_user["_id"])
-    emergency_doc = {
-        "user_id": user_id,
-        "location": {"lat": payload.location.lat, "long": payload.location.long},
-        "status": "ACTIVE",
-        "timestamp": datetime.now(timezone.utc),
-    }
-    result = db.emergencies.insert_one(emergency_doc)
-
-    _create_notification(
+    emergency_id = trigger_emergency(
         db=db,
-        user_id=user_id,
-        notif_type="EMERGENCY",
-        title="SOS Activated",
-        message="Emergency alert has been triggered.",
+        user=current_user,
+        source=payload.source,
+        trigger_word=payload.trigger_word,
+        transcript=payload.transcript,
+        location={"lat": payload.location.lat, "long": payload.location.long},
+        ai_processed_locally=payload.ai_processed_locally,
     )
-    return {"message": "SOS triggered", "emergency_id": str(result.inserted_id)}
+    return {"message": "SOS triggered", "emergency_id": emergency_id}
 
 
 @router.post("/location-update")
@@ -63,10 +47,39 @@ def update_location(
             "user_id": str(current_user["_id"]),
             "latitude": payload.latitude,
             "longitude": payload.longitude,
+            "is_emergency_tracking": payload.is_emergency_tracking,
+            "emergency_id": payload.emergency_id,
             "time": datetime.now(timezone.utc),
         }
     )
     return {"message": "Location updated"}
+
+
+@router.post("/ai-alert", status_code=status.HTTP_201_CREATED)
+def create_ai_alert(
+    payload: AIAlertRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+) -> dict:
+    user_id = str(current_user["_id"])
+    db.ai_alerts.insert_one(
+        {
+            "user_id": user_id,
+            "detected_text": payload.detected_text,
+            "trigger_word": payload.trigger_word,
+            "reason": payload.reason,
+            "ai_processed_locally": payload.ai_processed_locally,
+            "timestamp": datetime.now(timezone.utc),
+        }
+    )
+    create_notification(
+        db=db,
+        user_id=user_id,
+        notif_type="AI_ALERT",
+        title="AI Risk Signal Detected",
+        message=f"Detected keyword '{payload.trigger_word}'. Monitoring escalated.",
+    )
+    return {"message": "AI alert logged"}
 
 
 @router.post("/stop")
@@ -92,7 +105,7 @@ def stop_emergency(
             detail="Emergency not found",
         )
 
-    _create_notification(
+    create_notification(
         db=db,
         user_id=str(current_user["_id"]),
         notif_type="EMERGENCY",
@@ -100,4 +113,3 @@ def stop_emergency(
         message="Emergency status updated to SAFE.",
     )
     return {"message": "Emergency stopped"}
-

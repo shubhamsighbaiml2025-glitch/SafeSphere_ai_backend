@@ -10,6 +10,8 @@ from app.routers.auth import router as auth_router
 from app.routers.emergency import router as emergency_router
 from app.routers.missing import router as missing_router
 from app.routers.notifications import router as notifications_router
+from app.routers.safety import router as safety_router
+from app.services.safety_monitor import start_safety_monitor, stop_safety_monitor
 
 
 @asynccontextmanager
@@ -20,11 +22,16 @@ async def lifespan(_: FastAPI):
     db.users.create_index("email", unique=True)
     db.emergencies.create_index([("user_id", 1), ("timestamp", -1)])
     db.location_logs.create_index([("user_id", 1), ("time", -1)])
+    db.ai_alerts.create_index([("user_id", 1), ("timestamp", -1)])
     db.missing_persons.create_index([("status", 1), ("time", -1)])
     db.sightings.create_index([("person_id", 1), ("timestamp", -1)])
     db.notifications.create_index([("user_id", 1), ("timestamp", -1)])
+    db.safety_sessions.create_index("user_id", unique=True)
+
+    start_safety_monitor()
 
     yield
+    await stop_safety_monitor()
     close_mongo_connection()
 
 
@@ -45,6 +52,7 @@ app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(emergency_router, prefix=settings.api_prefix)
 app.include_router(missing_router, prefix=settings.api_prefix)
 app.include_router(notifications_router, prefix=settings.api_prefix)
+app.include_router(safety_router, prefix=settings.api_prefix)
 
 
 @app.get("/")
