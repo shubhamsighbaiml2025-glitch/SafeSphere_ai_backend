@@ -18,6 +18,7 @@ router = APIRouter(tags=["Auth"])
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/auth/register", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def register(payload: RegisterRequest, db: Database = Depends(get_db)) -> dict:
     existing_user = db.users.find_one({"email": payload.email.lower()})
     if existing_user:
@@ -47,6 +48,7 @@ def register(payload: RegisterRequest, db: Database = Depends(get_db)) -> dict:
 
 
 @router.post("/login", response_model=TokenResponse)
+@router.post("/auth/login", response_model=TokenResponse, include_in_schema=False)
 def login(payload: LoginRequest, db: Database = Depends(get_db)) -> TokenResponse:
     user = db.users.find_one({"email": payload.email.lower()})
     if not user or not verify_password(payload.password, user["password_hash"]):
@@ -60,6 +62,7 @@ def login(payload: LoginRequest, db: Database = Depends(get_db)) -> TokenRespons
 
 
 @router.get("/profile", response_model=UserProfileResponse)
+@router.get("/auth/profile", response_model=UserProfileResponse, include_in_schema=False)
 def get_profile(current_user: dict = Depends(get_current_user)) -> UserProfileResponse:
     user = serialize_document(current_user)
     return UserProfileResponse(

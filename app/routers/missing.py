@@ -29,6 +29,7 @@ def _create_notification(
 
 
 @router.post("/report-missing", status_code=status.HTTP_201_CREATED)
+@router.post("/missing", status_code=status.HTTP_201_CREATED, include_in_schema=False)
 def report_missing(
     payload: ReportMissingRequest,
     current_user: dict = Depends(get_current_user),
@@ -54,6 +55,7 @@ def report_missing(
 
 
 @router.get("/missing-list", response_model=list[MissingPersonResponse])
+@router.get("/missing-people", response_model=list[MissingPersonResponse], include_in_schema=False)
 def missing_list(
     current_user: dict = Depends(get_current_user), db: Database = Depends(get_db)
 ) -> list[MissingPersonResponse]:
@@ -76,6 +78,7 @@ def missing_list(
 
 
 @router.post("/seen-report")
+@router.post("/missing/seen-report", include_in_schema=False)
 def seen_report(
     payload: SeenReportRequest,
     current_user: dict = Depends(get_current_user),
@@ -113,4 +116,3 @@ def seen_report(
             message=f"A sighting was reported for {person['name']}.",
         )
     return {"message": "Sighting report submitted"}
-
