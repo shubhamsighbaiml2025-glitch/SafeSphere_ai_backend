@@ -16,6 +16,10 @@ class SeenReportRequest(BaseModel):
     reporter_location: str
 
 
+class MarkFoundRequest(BaseModel):
+    person_id: str
+
+
 class MissingPersonResponse(BaseModel):
     id: str
     name: str
@@ -23,4 +27,3 @@ class MissingPersonResponse(BaseModel):
     last_seen_location: str
     time: datetime
     status: Literal["MISSING", "FOUND"]
-

@@ -9,7 +9,12 @@ from pymongo.database import Database
 
 from app.core.deps import get_current_user
 from app.db.mongo import get_db
-from app.schemas.missing import MissingPersonResponse, ReportMissingRequest, SeenReportRequest
+from app.schemas.missing import (
+    MarkFoundRequest,
+    MissingPersonResponse,
+    ReportMissingRequest,
+    SeenReportRequest,
+)
 from app.utils.serializers import serialize_document
 
 router = APIRouter(tags=["Missing"])
@@ -182,3 +187,41 @@ def seen_report(
             message=f"A sighting was reported for {person['name']}.",
         )
     return {"message": "Sighting report submitted"}
+
+
+@router.post("/missing/mark-found")
+@router.post("/mark-found", include_in_schema=False)
+def mark_missing_person_found(
+    payload: MarkFoundRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Database = Depends(get_db),
+) -> dict:
+    _ = current_user
+    try:
+        person_id = ObjectId(payload.person_id)
+    except InvalidId as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid person_id"
+        ) from exc
+
+    person = db.missing_persons.find_one({"_id": person_id})
+    if not person:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Missing person not found"
+        )
+
+    db.missing_persons.update_one(
+        {"_id": person_id},
+        {"$set": {"status": "FOUND"}},
+    )
+
+    reporter_user_id = person.get("reported_by")
+    if reporter_user_id:
+        _create_notification(
+            db=db,
+            user_id=reporter_user_id,
+            notif_type="MISSING_FOUND",
+            title="Missing Person Marked Found",
+            message=f"{person['name']} has been marked as FOUND.",
+        )
+    return {"message": "Missing person status updated to FOUND"}
