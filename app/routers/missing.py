@@ -55,6 +55,7 @@ def report_missing(
 
 
 @router.get("/missing-list", response_model=list[MissingPersonResponse])
+@router.get("/missing", response_model=list[MissingPersonResponse], include_in_schema=False)
 @router.get("/missing-people", response_model=list[MissingPersonResponse], include_in_schema=False)
 def missing_list(
     current_user: dict = Depends(get_current_user), db: Database = Depends(get_db)
